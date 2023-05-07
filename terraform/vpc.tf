@@ -1,115 +1,97 @@
-#step1 create a vpc
-
-resource "aws_vpc" "myvpc" {
-    cidr_block = "10.0.0.0/16"
-     tags = {
-        Name ="MyterraformVPC"
-     }
-  
+provider "aws" {
+  region = "us-east-1"
 }
 
-#terraform code to launch EC2 instance
-/*resource "aws_instance" "web" {
-    ami ="al2023-ami-2023.0.20230419.0-kernel-6.1-x86_64" #amazon linux AMI
-    instance_type="t2.micro"
-
-    tags = {
-      Name="krish-terraform-ec2"
-    }
-  
-}
-#SEQURITY group using terraform
-resource "aws_security_group" "TF-krish" {
-  name        = "security group using terraform"
-  description = "security group using terraform"
-  vpc_id      ="vpc-0444877119e90f85d"
-# we are seting 3 rules in ingress http ssh and 
-  
-ingress {
-    description      = "HTTPS"
-    from_port        = 443
-    to_port          = 443
-    protocol         = "tcp"
-    cidr_blocks      = ["0.0.0.0/0"]
-    ipv6_cidr_blocks = ["::/0"]
-  }
-  ingress {
-    description      = "HTTP"
-    from_port        = 80
-    to_port          = 80
-    protocol         = "tcp"
-    cidr_blocks      = ["0.0.0.0/0"]
-    ipv6_cidr_blocks = ["::/0"]
-  }
-  ingress {
-    description      = "SSH"
-    from_port        = 22
-    to_port          = 22
-    protocol         = "tcp"
-   cidr_blocks      = ["0.0.0.0/0"]
-    ipv6_cidr_blocks = ["::/0"]
-  }
-  egress {
-    from_port        = 0
-    to_port          = 0
-    protocol         = "-1"
-    cidr_blocks      = ["0.0.0.0/0"]
-    ipv6_cidr_blocks = ["::/0"]
-  }
-
+# Create VPC
+resource "aws_vpc" "main" {
+  cidr_block = "10.0.0.0/16"
   tags = {
-    Name = "allow_tls"
+    Name = "example-vpc"
   }
-}*/
-
-#step2 create a public subnet
-resource "aws_subnet" "PublicSubnet" {
-        vpc_id= aws_vpc.myvpc.id
-        cidr_block = "10.0.3.0/24"
-        
-
-  
 }
-/*resource "aws_subnet" "PublicSubnet2" {
-        vpc_id= aws_vpc.myvpc.id
-        cidr_block = "10.0.4.0/24"
 
-  
+# Create Public Subnets
+resource "aws_subnet" "public_1a" {
+  vpc_id = aws_vpc.main.id
+  cidr_block = "10.0.3.0/24"
+  availability_zone = "us-east-1a"
+  tags = {
+    Name = "public-1a"
+  }
 }
-*/
 
-#step3 create a private subnet 
-resource "aws_subnet" "PrivateSubnet" {
-        vpc_id = aws_vpc.myvpc.id
-        cidr_block = "10.0.1.0/24"
-
-  
+resource "aws_subnet" "public_1b" {
+  vpc_id = aws_vpc.main.id
+  cidr_block = "10.0.4.0/24"
+  availability_zone = "us-east-1b"
+  tags = {
+    Name = "public-1b"
+  }
 }
-/*
-resource "aws_subnet" "PrivateSubnet2" {
-        vpc_id= aws_vpc.myvpc.id
-        cidr_block = "10.0.2.0/24"
 
-  
-}*/
-
-#step-4
-#create  internet gateway
-resource "aws_internet_gateway" "igw" {
-   vpc_id = aws_vpc.myvpc.id
+# Create Private Subnets
+resource "aws_subnet" "private_1a" {
+  vpc_id = aws_vpc.main.id
+  cidr_block = "10.0.1.0/24"
+  availability_zone = "us-east-1a"
+  tags = {
+    Name = "private-1a"
+  }
 }
-#step-5 create a route table
- resource "aws_route_table" "PublicRT" {
-   vpc_id = aws_vpc.myvpc.id
-   route  {
+
+resource "aws_subnet" "private_1b" {
+  vpc_id = aws_vpc.main.id
+  cidr_block = "10.0.2.0/24"
+  availability_zone = "us-east-1b"
+  tags = {
+    Name = "private-1b"
+  }
+}
+
+# Create Internet Gateway
+resource "aws_internet_gateway" "gw" {
+  vpc_id = aws_vpc.main.id
+  tags = {
+    Name = "example-gw"
+  }
+}
+
+# Create Route Tables
+resource "aws_route_table" "public" {
+  vpc_id = aws_vpc.main.id
+  route {
     cidr_block = "0.0.0.0/0"
-    gateway_id = aws_internet_gateway.igw.id
-   }
- }
+    gateway_id = aws_internet_gateway.gw.id
+  }
+  tags = {
+    Name = "public"
+  }
+}
 
- #step-6 route table associate public subnet
- resource "aws_route_table_association" "PublicRTassociation" {
-  subnet_id = aws_subnet.PrivateSubnet.id
-  route_table_id = aws_route_table.PublicRT.id
-   
- }
+resource "aws_route_table" "private" {
+  vpc_id = aws_vpc.main.id
+  tags = {
+    Name = "private"
+  }
+}
+
+# Associate Subnets with Route Tables
+resource "aws_route_table_association" "public_1a" {
+  subnet_id = aws_subnet.public_1a.id
+  route_table_id = aws_route_table.public.id
+}
+
+resource "aws_route_table_association" "public_1b" {
+  subnet_id = aws_subnet.public_1b.id
+  route_table_id = aws_route_table.public.id
+}
+
+resource "aws_route_table_association" "private_1a" {
+  subnet_id = aws_subnet.private_1a.id
+  route_table_id = aws_route_table.private.id
+}
+
+resource "aws_route_table_association" "private_1b" {
+  subnet_id = aws_subnet.private_1b.id
+  route_table_id = aws_route_table.private.id
+}
